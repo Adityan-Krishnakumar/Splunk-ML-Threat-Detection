@@ -10,6 +10,9 @@ This repository details a comprehensive Incident Response (IR) and Threat Huntin
 * **Telemetry Sources:** Sysmon (Event IDs 1 & 3), Network Stream Logs (`stream:http`)
 * **Core Competencies:** Threat Hunting, Regular Expression (RegEx) parsing, Dashboard Engineering, ML Train-Test Split validation.
 
+## Dataset Attribution
+The investigation was conducted utilizing the **Splunk Boss of the SOC (BOTS) Dataset v1**. This is a realistic, captured dataset containing 24 hours of telemetry from a simulated enterprise environment (WayneCorp). It includes real-world noise, legitimate business traffic, and a multi-stage APT attack lifecycle, providing a high-fidelity environment for Incident Response and Machine Learning training. 
+
 ## Attack Chain Analysis
 
 ### 1. Reconnaissance (Scanner Detection)
@@ -31,7 +34,8 @@ To ascertain the extent of the breach, I tracked the payload's outbound network 
 
 ## Threat Visualization & Reporting
 
-*(Drag and drop your Dashboard PDF/Screenshot here!)*
+<img width="1919" height="789" alt="Screenshot 2026-03-19 123422" src="https://github.com/user-attachments/assets/244468b2-6e27-402f-a795-e9cf1f886fcb" />
+
 
 To provide actionable intelligence to security leadership, I engineered a dynamic Splunk dashboard. This visualization aggregated the extracted IoCs, mapped the timeline of the attack lifecycle, and provided real-time visibility into compromised endpoints.
 
@@ -41,21 +45,25 @@ Relying exclusively on manual query execution for reconnaissance detection intro
 ### Phase 1: Model Training (`fit`)
 Deploying the `DensityFunction` algorithm, I trained a model to analyze request frequency over 1-minute intervals. The threshold was strictly configured to `0.01`, instructing the algorithm to isolate the 99th percentile of extreme statistical deviations, effectively filtering out standard business traffic.
 
-``splunk
+```splunk
 index="botsv1" earliest=0 sourcetype="stream:http" 
 | timechart span=1m count 
 | fit DensityFunction count threshold=0.01 into baseline_web_traffic
-<img width="1917" height="990" alt="Screenshot 2026-03-19 094011" src="https://github.com/user-attachments/assets/4e305b84-0a0e-48c7-afad-5105692b690a" />
+```
+
 
 ### Phase 2: Production Deployment (apply)
 The saved baseline_web_traffic model was then applied against the raw data stream. The ML pipeline successfully generated a binary IsOutlier flag, dropping all normal traffic (0.0) and mathematically isolating the exact 53 minutes of the Acunetix brute-force attack (1.0). This established a high-fidelity, automated alerting mechanism with minimal false positives.
 
-Code snippet
+```Code snippet
 index="botsv1" earliest=0 sourcetype="stream:http" 
 | timechart span=1m count 
 | apply baseline_web_traffic
 | search "IsOutlier(count)"=1
+```
+
 <img width="1919" height="921" alt="Screenshot 2026-03-19 110525" src="https://github.com/user-attachments/assets/7ddd000a-fcc8-471c-bd38-d32ee5c75722" />
+
 
 Business Impact
 By transitioning from manual log analysis to an ML-driven detection model, this project demonstrates how to significantly reduce SOC analyst workload, automate the identification of early-stage kill chain activities, and fortify the network against automated exploitation frameworks.
